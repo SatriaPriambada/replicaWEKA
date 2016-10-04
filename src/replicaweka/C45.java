@@ -7,7 +7,7 @@ package replicaweka;
 
 /**
  *
- * @author Satria
+ * @author Satria, Cliff, Luqman
  */
 public class C45 {
     public void createModel(){

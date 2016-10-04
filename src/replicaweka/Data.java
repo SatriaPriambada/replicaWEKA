@@ -5,13 +5,17 @@
  */
 package replicaweka;
 
+import java.util.ArrayList;
+
 /**
  *
- * @author Satria, Cliff, Luqman
+ * @author Satria
  */
-public class ID3 {
-    public void createModel(){
-        System.out.println("Creating model for ID3");
+public class Data {
+    private ArrayList instance;
+    
+    public void getInstance(int i){
+        System.out.println("Getting instance " + i);
     }
     
 }
