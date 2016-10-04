@@ -52,12 +52,14 @@ import weka.filters.unsupervised.attribute.Remove;
  * @author Satria, Cliff, Luqman
  */
 public class ReplicaWEKA {
-
+    private static boolean isLoad;
+    private static Classifier loadedClassifier;
+    private static String path = "C:\\Users\\Satria\\Documents\\NetBeansProjects\\replicaWEKA\\weka_models\\";
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) throws Exception {
-        System.out.println("Enter Type (weka/replicaWEKA)");
+        System.out.println("Enter Type (weka/replicaWEKA/saveLoad)");
         Scanner sc = new Scanner(System.in);
         String input = sc.nextLine();
         if (input.equals("weka")){
@@ -73,6 +75,10 @@ public class ReplicaWEKA {
             System.out.println("Start C4.5");
             c45.createModel();
             System.out.println("Finish C4.5");
+        } else if (input.equals("saveLoad")){
+            loadedClassifier = loadModel(new File(path),"w.nom.crossfold");
+            isLoad = true;
+            classifyWeka();
         } else {
             System.out.println("Not valid input");
         }
@@ -88,12 +94,12 @@ public class ReplicaWEKA {
         }
     }
     // Save and load model are code written by  snake plissken at Mar 6 '14 at 7:49 http://stackoverflow.com/questions/22201949/save-and-load-smo-weka-model-from-file
-    private static void saveModel(Classifier c, String name, File path) throws Exception {
+    private static void saveModel(Classifier c, String name) throws Exception {
 
         ObjectOutputStream oos = null;
         try {
             oos = new ObjectOutputStream(
-                    new FileOutputStream("/weka_models/" + name + ".model"));
+                    new FileOutputStream(path + "\\" + name + ".model"));
 
         } catch (FileNotFoundException e1) {
             e1.printStackTrace();
@@ -110,7 +116,7 @@ public class ReplicaWEKA {
 
         Classifier classifier;
 
-        FileInputStream fis = new FileInputStream(path + name + ".model");
+        FileInputStream fis = new FileInputStream(path + "\\"+ name + ".model");
         ObjectInputStream ois = new ObjectInputStream(fis);
 
         classifier = (Classifier) ois.readObject();
@@ -119,27 +125,27 @@ public class ReplicaWEKA {
         return classifier;
     }
     
-    public static void classifyWeka() throws Exception{
-        double accuracy = 0.0f;
-        int correctPrediction = 0;
-        //Get the train
-        DataSource dt = new DataSource("weather.nominal.arff");
-        Instances trainDataset = dt.getDataSet();
-        //set the index of class
-        trainDataset.setClassIndex(trainDataset.numAttributes() - 1);
-        //Remove some instance for Spec no.2 but is not currently needed
-        /*
+    //Remove some instance for Spec no.2 but is not currently needed
+    public static void filterRemove(Instances trainDataset) throws Exception{
+        
         String[] options = new String[2];
         options[0] = "-R";                                              // "range"
-        options[1] = "1";                                               // first attribute will be removed
+        options[1] = "2";                                               // first attribute will be removed
         Remove remove = new Remove();                                   // new instance of filter
-        remove.setOptions(options);                                     // set options
-        remove.setInputFormat(trainDataset);                            // inform filter about dataset **AFTER** setting options
-        Instances newTrain = Filter.useFilter(trainDataset, remove);    // apply filter
-        */
+        remove.setAttributeIndices("1");    // apply filter
+        remove.setInputFormat(trainDataset);
+        Instances newTrain = Filter.useFilter(trainDataset, remove);
+        for (int i = 0; i < newTrain.numInstances(); i++) {
+            Instance inst = newTrain.instance(i);
+            System.out.println(inst.toString());
+        }
         
-        //Resample some instance for Spec no.3 but is not currently needed
-        /*
+        
+    }
+    
+    //Resample some instance for Spec no.3 but is not currently needed
+    public static void filterResample(Instances trainDataset) throws Exception{
+        
         String[] options = new String[6];
         options[0] = "-B";                                              // "bias"
         options[1] = "0.0";                                             // 0 means bias to class index 0 in the case of weather class yes
@@ -155,7 +161,29 @@ public class ReplicaWEKA {
             Instance inst = newTrain.instance(i);
             System.out.println(inst.toString());
             }
-        */
+        
+    }
+    
+    public static void classifyWeka() throws Exception{
+        double accuracy = 0.0f;
+        int correctPrediction = 0;
+        //Get the train
+        DataSource dt = new DataSource("weather.nominal.arff");
+        Instances trainDataset = dt.getDataSet();
+        //set the index of class
+        trainDataset.setClassIndex(trainDataset.numAttributes() - 1);
+        
+        
+        if (isLoad){
+            System.out.println("Clasify from load model");
+            Evaluation eval = new Evaluation(trainDataset);
+            eval.evaluateModel(loadedClassifier, trainDataset);
+            System.out.println(eval.toSummaryString("\nResults Test Dataset from Loaded model\n======\n", false));
+            saveModel(loadedClassifier,"saveTio");
+            System.out.println("Model has been saved");
+            return;
+            
+        }
         
         //Get the test
         dt = new DataSource("weather.nominal.test.arff");
@@ -218,19 +246,49 @@ public class ReplicaWEKA {
         } else if(inputClassifier.equals("c45")){
             System.out.println("Building C45/J48 WEKA");
             J48 j48 = new J48();
-            j48.buildClassifier(trainDataset);
-                 for (int i = 0; i < testDataset.numInstances(); i++) {
-                double realClass = testDataset.instance(i).classValue();
-                String realClassName = testDataset.classAttribute().value((int) realClass);
-                //Predict the instance
-                Instance inst = testDataset.instance(i);
-                double predictionClass = j48.classifyInstance(inst);
-                String predictionClassName = testDataset.classAttribute().value((int) predictionClass);
-                System.out.println("R: " + realClassName + " , " + predictionClassName );
-                if (realClassName.equals(predictionClassName)){
-                    correctPrediction++;
+            j48.buildClassifier(trainDataset);System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage)");
+            sc = new Scanner(System.in);
+            String inputTester = sc.nextLine();
+            if (inputTester.equals("suppliedtest")){
+                //Compare result
+                for (int i = 0; i < testDataset.numInstances(); i++) {
+                    double realClass = testDataset.instance(i).classValue();
+                    String realClassName = testDataset.classAttribute().value((int) realClass);
+                    //Predict the instance
+                    Instance inst = testDataset.instance(i);
+                    double predictionClass = j48.classifyInstance(inst);
+                    String predictionClassName = testDataset.classAttribute().value((int) predictionClass);
+                    System.out.println("R: " + realClassName + " , P: " + predictionClassName );
+                    if (realClassName.equals(predictionClassName)){
+                        correctPrediction++;
+                    }
                 }
-
+                System.out.println("Correct pred : " + correctPrediction);
+                accuracy = correctPrediction / testDataset.numInstances();
+                System.out.println("Accuracy : " + accuracy);
+                Evaluation eval = new Evaluation(trainDataset);
+                eval.evaluateModel(j48, testDataset);
+                System.out.println(eval.toSummaryString("\nResults Test Dataset\n======\n", false));
+                
+            } else if (inputTester.equals("10kcrossfold")){
+                Evaluation eval = new Evaluation(trainDataset);
+                eval.crossValidateModel(j48, trainDataset, 10, new Random(1));
+                System.out.println(eval.toSummaryString("\nResults 10k Cross Fold Validation\n======\n", false));
+            } else if (inputTester.equals("percentage")){
+                //Randomize first to make sure no part has incremental data
+                trainDataset.randomize(new java.util.Random(0));
+                //split the size based on percentage
+                int percent = 80;
+                int trainSize = (int) Math.round(trainDataset.numInstances() * percent
+                    / 100);
+                int testSize = trainDataset.numInstances() - trainSize;
+                Instances train = new Instances(trainDataset, 0, trainSize);
+                Instances test = new Instances(trainDataset, trainSize, testSize);
+                Evaluation eval = new Evaluation(train);
+                eval.evaluateModel(j48, test);
+                System.out.println(eval.toSummaryString("\nResults Percentage Split\n======\n", false));
+            } else {
+                System.out.println("Not valid test Type");
             }
         }
         
