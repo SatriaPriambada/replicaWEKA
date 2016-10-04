@@ -65,16 +65,83 @@ public class ReplicaWEKA {
         if (input.equals("weka")){
             classifyWeka();
         } else if (input.equals("replicaWEKA")){
-            readFile("test.arff");
-            ID3 id3 = new ID3();
-            C45 c45 = new C45();
-            System.out.println("Start ID3");
-            id3.createModel();
-            System.out.println("Finish ID3");
+            MyID3 id3 = new MyID3();
+            MyC45 c45 = new MyC45();
 
-            System.out.println("Start C4.5");
-            c45.createModel();
-            System.out.println("Finish C4.5");
+            //Get the train
+            DataSource dt = new DataSource("weather.nominal.arff");
+            Instances trainDataset = dt.getDataSet();
+            //set the index of class
+            trainDataset.setClassIndex(trainDataset.numAttributes() - 1);
+            
+            //read The Classifier
+            System.out.println("Enter Classifier (id3/c45)");
+            sc = new Scanner(System.in);
+            String inputClassifier = sc.nextLine();
+            switch(inputClassifier){
+                case "id3":
+                    System.out.println("Start ID3");
+                    id3.createModel(trainDataset);
+                    System.out.println("Finish ID3");
+                    System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage/predict)");
+                    String inputTester = sc.nextLine();
+                    switch(inputTester){
+                        case "suppliedtest" :
+                            //Get the test
+                            DataSource dtest = new DataSource("weather.nominal.test.arff");
+                            Instances testDataset = dtest.getDataSet();
+                            //set the index of class
+                            testDataset.setClassIndex(testDataset.numAttributes() - 1);
+                            id3.testDataset(testDataset);
+                            break;
+                        case "10kcrossfold":
+                            id3.crossFold(trainDataset);
+                            break;
+                        case "percentage":
+                            id3.percentageSplit(trainDataset);
+                            break;
+                        case "predict":
+                            id3.predict(trainDataset);
+                            break;
+                        default:
+                            System.out.println("Not a valid tester");
+                            break;
+                    }
+                    break;
+                case "c45":
+                    System.out.println("Start C4.5");
+                    c45.createModel(trainDataset);
+                    System.out.println("Finish C4.5");
+                    System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage/predict)");
+                    inputTester = sc.nextLine();
+                    switch(inputTester){
+                        case "suppliedtest" :
+                            //Get the test
+                            DataSource dtest = new DataSource("weather.nominal.test.arff");
+                            Instances testDataset = dtest.getDataSet();
+                            //set the index of class
+                            testDataset.setClassIndex(testDataset.numAttributes() - 1);
+                            c45.testDataset(testDataset);
+                            break;
+                        case "10kcrossfold":
+                            c45.crossFold(trainDataset);
+                            break;
+                        case "percentage":
+                            c45.percentageSplit(trainDataset);
+                            break;
+                        case "predict":
+                            c45.predict(trainDataset);
+                            break;
+                        default:
+                            System.out.println("Not a valid tester");
+                            break;
+                    }
+                    break;
+                default:
+                    System.out.println("Not a valid classifier");
+                    break;
+            }
+
         } else if (input.equals("saveLoad")){
             loadedClassifier = loadModel(new File(path),"w.nom.crossfold");
             isLoad = true;
@@ -182,7 +249,6 @@ public class ReplicaWEKA {
             saveModel(loadedClassifier,"saveTio");
             System.out.println("Model has been saved");
             return;
-            
         }
         
         //Get the test
@@ -194,11 +260,12 @@ public class ReplicaWEKA {
         System.out.println("Enter Classifier (id3/c45)");
         Scanner sc = new Scanner(System.in);
         String inputClassifier = sc.nextLine();
+        
         if(inputClassifier.equals("id3")){
             System.out.println("Building ID3 WEKA");
             Id3 id3 = new Id3();
             id3.buildClassifier(trainDataset);
-            System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage)");
+            System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage/predict)");
             sc = new Scanner(System.in);
             String inputTester = sc.nextLine();
             if (inputTester.equals("suppliedtest")){
@@ -239,6 +306,15 @@ public class ReplicaWEKA {
                 Evaluation eval = new Evaluation(train);
                 eval.evaluateModel(id3, test);
                 System.out.println(eval.toSummaryString("\nResults Percentage Split\n======\n", false));
+            } else if (inputTester.equals("predict")){
+                Evaluation eval = new Evaluation(trainDataset);
+                //Get the test
+                dt = new DataSource("weather.nominal.test1.arff");
+                Instances test1Dataset = dt.getDataSet();
+                //set the index of class
+                testDataset.setClassIndex(testDataset.numAttributes() - 1);
+                eval.evaluateModel(id3, test1Dataset);
+                System.out.println(eval.toSummaryString("\nResults Prediction\n======\n", false));
             } else {
                 System.out.println("Not valid test Type");
             }
@@ -246,7 +322,8 @@ public class ReplicaWEKA {
         } else if(inputClassifier.equals("c45")){
             System.out.println("Building C45/J48 WEKA");
             J48 j48 = new J48();
-            j48.buildClassifier(trainDataset);System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage)");
+            j48.buildClassifier(trainDataset);
+            System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage/predict)");
             sc = new Scanner(System.in);
             String inputTester = sc.nextLine();
             if (inputTester.equals("suppliedtest")){
@@ -287,6 +364,10 @@ public class ReplicaWEKA {
                 Evaluation eval = new Evaluation(train);
                 eval.evaluateModel(j48, test);
                 System.out.println(eval.toSummaryString("\nResults Percentage Split\n======\n", false));
+            } else if (inputTester.equals("predict")){
+                Evaluation eval = new Evaluation(trainDataset);
+                eval.crossValidateModel(j48, trainDataset, 10, new Random(1));
+                System.out.println(eval.toSummaryString("\nResults Prediction\n======\n", false));
             } else {
                 System.out.println("Not valid test Type");
             }
