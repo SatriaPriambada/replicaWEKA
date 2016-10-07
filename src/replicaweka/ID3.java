@@ -12,6 +12,7 @@ import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.NoSupportForMissingValuesException;
 import weka.core.Utils;
 
 /**
@@ -26,18 +27,16 @@ public class ID3 extends Classifier {
     
     private double m_ClassValue;
     private double[] m_Distribution;
-    
-    public void createModel(){
-        System.out.println("Creating model for ID3");
-    }
-    
+       
     
     public Capabilities getCapabilities() {
         Capabilities result = super.getCapabilities();
         result.disableAll();
 
         result.enable(Capability.NOMINAL_ATTRIBUTES);
-
+        //result.enable(Capability.NUMERIC_ATTRIBUTES);
+        
+        //result.enable(Capability.NUMERIC_CLASS);
         result.enable(Capability.NOMINAL_CLASS);
         result.enable(Capability.MISSING_CLASS_VALUES);
 
@@ -138,12 +137,26 @@ public class ID3 extends Classifier {
         return splitData;
     }
     
+    public double classifyInstance(Instance instance) 
+        throws NoSupportForMissingValuesException {
+
+        if (instance.hasMissingValue()) {
+            throw new NoSupportForMissingValuesException("Id3: no missing values, " + "please.");
+        }
+        if (m_Attribute == null) {
+          return m_ClassValue;
+        } else {
+            return m_Successors[(int) instance.value(m_Attribute)].
+                classifyInstance(instance);
+        }
+    }
+    
     public String toString() {
 
         if ((m_Distribution == null) && (m_Successors == null)) {
           return "Id3: No model built yet.";
         }
-        return "Id3\n\n" + printTree(0);
+        return "\nId3\n" + printTree(0);
     }
     
     private String printTree(int level) {
