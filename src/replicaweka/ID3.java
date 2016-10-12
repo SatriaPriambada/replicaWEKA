@@ -34,9 +34,6 @@ public class ID3 extends Classifier {
         result.disableAll();
 
         result.enable(Capability.NOMINAL_ATTRIBUTES);
-        //result.enable(Capability.NUMERIC_ATTRIBUTES);
-        
-        //result.enable(Capability.NUMERIC_CLASS);
         result.enable(Capability.NOMINAL_CLASS);
         result.enable(Capability.MISSING_CLASS_VALUES);
 

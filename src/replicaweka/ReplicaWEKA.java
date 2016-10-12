@@ -65,17 +65,16 @@ public class ReplicaWEKA {
         if (input.equals("weka")){
             classifyWeka();
         } else if (input.equals("replicaWEKA")){
-            readFile("iris.arff");
             int correctPrediction = 0;
             double accuracy = 0.0f;
             
             // Training
-            DataSource dt = new DataSource("iris.arff");
+            DataSource dt = new DataSource("weather.nominal.arff");
             Instances trainDataset = dt.getDataSet();
             trainDataset.setClassIndex(trainDataset.numAttributes()-1);
             
             // Testing
-            DataSource dtest = new DataSource("iris.test.arff");
+            DataSource dtest = new DataSource("weather.nominal.test.arff");
             Instances testDataset = dtest.getDataSet();
             testDataset.setClassIndex(testDataset.numAttributes()-1);
             
@@ -141,6 +140,41 @@ public class ReplicaWEKA {
                 System.out.println("Start C4.5");
                 c45.createModel(trainDataset);
                 System.out.println("Finish C4.5");
+                System.out.println(c45.toString());
+                
+                System.out.println("Enter Test Type (suppliedtest/10kcrossfold/percentage/predict)");
+                sc = new Scanner(System.in);
+                String inputTester = sc.nextLine();
+                if (inputTester.equals("suppliedtest")){
+                    //Compare result
+                    Evaluation eval = new Evaluation(trainDataset);
+                    eval.evaluateModel(c45, testDataset);
+                    System.out.println(eval.toSummaryString("\nResults Test Dataset\n======\n", false));
+
+                } else if (inputTester.equals("10kcrossfold")){
+                    Evaluation eval = new Evaluation(trainDataset);
+                    eval.crossValidateModel(c45, trainDataset, 10, new Random(1));
+                    System.out.println(eval.toSummaryString("\nResults 10k Cross Fold Validation\n======\n", false));
+                } else if (inputTester.equals("percentage")){
+                    //Randomize first to make sure no part has incremental data
+                    trainDataset.randomize(new java.util.Random(0));
+                    //split the size based on percentage
+                    int percent = 80;
+                    int trainSize = (int) Math.round(trainDataset.numInstances() * percent
+                        / 100);
+                    int testSize = trainDataset.numInstances() - trainSize;
+                    Instances train = new Instances(trainDataset, 0, trainSize);
+                    Instances test = new Instances(trainDataset, trainSize, testSize);
+                    Evaluation eval = new Evaluation(train);
+                    eval.evaluateModel(c45, test);
+                    System.out.println(eval.toSummaryString("\nResults Percentage Split\n======\n", false));
+                } else if (inputTester.equals("predict")){
+                    Evaluation eval = new Evaluation(trainDataset);
+                    eval.crossValidateModel(c45, trainDataset, 10, new Random(1));
+                    System.out.println(eval.toSummaryString("\nResults Prediction\n======\n", false));
+                } else {
+                    System.out.println("Not valid test Type");
+                }
             }
             else {
                 System.out.println("Input error");
@@ -239,7 +273,7 @@ public class ReplicaWEKA {
         double accuracy = 0.0f;
         int correctPrediction = 0;
         //Get the train
-        DataSource dt = new DataSource("weather.nominal.arff");
+        DataSource dt = new DataSource("iris.arff");
         Instances trainDataset = dt.getDataSet();
         //set the index of class
         trainDataset.setClassIndex(trainDataset.numAttributes() - 1);
@@ -256,7 +290,7 @@ public class ReplicaWEKA {
         }
         
         //Get the test
-        dt = new DataSource("weather.nominal.test.arff");
+        dt = new DataSource("iris.arff");
         Instances testDataset = dt.getDataSet();
         //set the index of class
         testDataset.setClassIndex(testDataset.numAttributes() - 1);
